@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LearnHub — Submit Training Material</title>
+
+<!--
+  ╔══════════════════════════════════════════════════════════════════════════╗
+  ║  LEARNHUB  ·  SHAREPOINT-CONNECTED SUBMISSION FORM                      ║
+  ║  Execution Centre 1  ·  Grid Consulting UK                               ║
+  ║                                                                          ║
+  ║  SETUP: Fill in the four config values below before deploying.           ║
+  ║  See the accompanying setup guide for how to obtain each value.          ║
+  ╚══════════════════════════════════════════════════════════════════════════╝
+-->
+
+<!-- ── MSAL.js (Microsoft Authentication Library) from CDN ── -->
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+
+<style>
+  :root {
+    --bg: #F5F2EC;
+    --surface: #FDFBF7;
+    --border: #DDD8CE;
+    --ink: #1C1917;
+    --ink-muted: #78716C;
+    --accent: #C2410C;
+    --accent-light: #FEF3EC;
+    --accent-hover: #9A3412;
+    --green: #15803D;
+    --green-bg: #F0FDF4;
+    --green-border: #BBF7D0;
+    --red: #DC2626;
+    --red-bg: #FEF2F2;
+    --red-border: #FECACA;
+    --blue: #1D4ED8;
+    --blue-bg: #EFF6FF;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(28,25,23,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: #1C1917;
+    color: #F5F2EC;
+    padding: 0 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .logo span { color: #F97316; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .user-pill {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 5px 14px 5px 8px;
+    font-size: 13px;
+    color: #D6D3D1;
+  }
+  .avatar {
+    width: 26px; height: 26px;
+    background: #F97316;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px; color: #1C1917;
+  }
+  .sign-in-btn {
+    padding: 7px 18px;
+    background: #F97316;
+    border: none;
+    border-radius: 7px;
+    color: #1C1917;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .sign-in-btn:hover { background: #FB923C; }
+
+  /* ── Auth gate ── */
+  #auth-gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+    padding: 40px;
+    text-align: center;
+  }
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 40px;
+    max-width: 420px;
+    box-shadow: var(--shadow);
+  }
+  .auth-icon { font-size: 48px; margin-bottom: 20px; }
+  .auth-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .auth-sub { font-size: 14px; color: var(--ink-muted); line-height: 1.6; margin-bottom: 28px; }
+  .auth-btn {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background 0.15s;
+  }
+  .auth-btn:hover { background: var(--accent-hover); }
+
+  /* ── Main form area ── */
+  #app { display: none; }
+  .page { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+  .page-title { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+  .page-subtitle { color: var(--ink-muted); font-size: 14px; margin-bottom: 36px; }
+
+  /* ── Stepper ── */
+  .stepper {
+    display: flex; align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 24px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow);
+  }
+  .step { display: flex; align-items: center; gap: 9px; flex: 1; cursor: pointer; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    border: 2px solid var(--border);
+    background: white; flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .step.active .step-num { background: var(--accent); border-color: var(--accent); color: white; }
+  .step.done   .step-num { background: var(--green);  border-color: var(--green);  color: white; font-size: 14px; }
+  .step-label { font-size: 12px; font-weight: 600; color: var(--ink-muted); }
+  .step.active .step-label { color: var(--ink); }
+  .step.done   .step-label { color: var(--green); }
+  .step-div { height: 1px; background: var(--border); flex: 0.4; margin: 0 6px; }
+
+  /* Progress bar */
+  .progress-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 28px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px 36px;
+    box-shadow: var(--shadow); margin-bottom: 16px;
+    animation: fadeUp 0.25s ease both;
+  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .card-title { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .card-desc  { font-size: 13px; color: var(--ink-muted); margin-bottom: 24px; line-height: 1.5; }
+
+  /* ── Form fields ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.span2 { grid-column: span 2; }
+  label { font-size: 12px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 4px; }
+  .req { color: var(--accent); }
+  .hint { font-size: 11px; color: var(--ink-muted); margin-top: -2px; }
+
+  input[type="text"], input[type="url"], input[type="date"],
+  select, textarea {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    font-family: inherit; font-size: 14px; color: var(--ink);
+    background: white; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    appearance: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(194,65,12,0.1);
+  }
+  input.error, select.error, textarea.error { border-color: var(--red); }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2378716C' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; cursor: pointer;
+  }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+  .auto-field {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px;
+    background: #F8F5F1; border: 1.5px solid var(--border);
+    border-radius: 7px; font-size: 14px; color: var(--ink-muted);
+  }
+  .auto-badge {
+    font-size: 10px; background: #E7E4DF; color: var(--ink-muted);
+    padding: 2px 6px; border-radius: 20px; font-weight: 700;
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+
+  /* Tags */
+  .tag-wrap {
+    border: 1.5px solid var(--border); border-radius: 7px;
+    padding: 7px 10px; display: flex; flex-wrap: wrap; gap: 5px;
+    background: white; cursor: text; min-height: 42px;
+  }
+  .tag-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(194,65,12,0.1); }
+  .tag {
+    background: var(--accent-light); color: var(--accent);
+    padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .tag-x { cursor: pointer; border: none; background: none; color: var(--accent); font-size: 14px; line-height: 1; padding: 0; }
+  .tag-input { border: none; outline: none; font-family: inherit; font-size: 14px; flex: 1; min-width: 100px; background: transparent; padding: 2px 0; }
+
+  /* Checkboxes */
+  .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .check-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; border: 1.5px solid var(--border);
+    border-radius: 7px; cursor: pointer; font-size: 13px;
+    transition: all 0.15s; background: white; user-select: none;
+  }
+  .check-item:hover { border-color: var(--accent); background: var(--accent-light); }
+  .check-item.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+  .check-box { width: 17px; height: 17px; border: 2px solid var(--border); border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+  .check-item.on .check-box { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* Upload */
+  .toggle-row { display: flex; gap: 7px; margin-bottom: 12px; }
+  .tog {
+    padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: white; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; color: var(--ink-muted);
+  }
+  .tog.on { background: var(--ink); border-color: var(--ink); color: white; }
+
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 32px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: white; position: relative;
+  }
+  .drop-zone:hover, .drop-zone.over { border-color: var(--accent); background: var(--accent-light); }
+  .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-icon { width: 44px; height: 44px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 20px; }
+  .drop-title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+  .drop-sub { font-size: 12px; color: var(--ink-muted); }
+  .format-pills { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+  .fmt { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; color: var(--ink-muted); letter-spacing: 0.04em; }
+
+  .file-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    background: var(--green-bg); border: 1px solid var(--green-border);
+    border-radius: 8px; margin-top: 10px; font-size: 13px;
+  }
+  .file-name { font-weight: 600; flex: 1; }
+  .file-size { color: var(--ink-muted); font-size: 12px; }
+  .file-rm { cursor: pointer; background: none; border: none; color: var(--ink-muted); font-size: 16px; }
+  .file-rm:hover { color: var(--accent); }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 22px 0; }
+
+  /* Callout */
+  .callout {
+    border-radius: 8px; padding: 11px 14px;
+    font-size: 13px; display: flex; align-items: flex-start; gap: 8px; margin-bottom: 16px;
+  }
+  .callout.info  { background: var(--blue-bg); border: 1px solid #BFDBFE; color: var(--blue); }
+  .callout.warn  { background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; }
+  .callout.ok    { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+
+  /* Upload progress */
+  .upload-prog-wrap { height: 4px; background: var(--border); border-radius: 2px; margin-top: 10px; overflow: hidden; display: none; }
+  .upload-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+
+  /* Review */
+  .review-section { margin-bottom: 20px; }
+  .review-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .review-row { display: flex; justify-content: space-between; font-size: 13px; padding: 7px 0; border-bottom: 1px solid #F0EDE8; }
+  .review-row:last-child { border-bottom: none; }
+  .rk { color: var(--ink-muted); flex-shrink: 0; width: 150px; }
+  .rv { font-weight: 600; text-align: right; }
+
+  /* Nav */
+  .form-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .btn { padding: 10px 24px; border-radius: 7px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--ink-muted); }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:disabled { background: #D6D3D1; cursor: not-allowed; }
+  .btn-draft { font-size: 12px; color: var(--ink-muted); background: none; border: none; cursor: pointer; font-family: inherit; text-decoration: underline; }
+  .btn-draft:hover { color: var(--ink); }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Success */
+  .success { text-align: center; padding: 56px 40px; }
+  .success-icon { width: 68px; height: 68px; background: var(--green-bg); border: 2px solid var(--green-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 20px; }
+  .success-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .success-sub { color: var(--ink-muted); font-size: 14px; max-width: 380px; margin: 0 auto 20px; line-height: 1.6; }
+  .ref-box { display: inline-block; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 22px; font-family: monospace; font-size: 15px; font-weight: 700; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 24px; }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #1C1917; color: white; padding: 12px 22px;
+    border-radius: 8px; font-size: 13px; font-weight: 600;
+    transition: transform 0.3s ease; z-index: 999; white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .field.span2 { grid-column: span 1; }
+    .check-grid { grid-template-columns: 1fr; }
+    header { padding: 0 20px; }
+    .card { padding: 22px 18px; }
+    .step-label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     ①  CONFIGURATION  — fill these in before deploying
+     ════════════════════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  // Azure AD / Entra ID — from your App Registration
+  CLIENT_ID:   "4ab47c44-464a-479f-b65b-e5b3669514e1",
+  TENANT_ID:   "254ba93e-1f6f-48f3-90e6-e2766664b477",
+
+  // SharePoint — from Graph API explorer or admin
+  SITE_ID:     "siemensenergyag.sharepoint.com,4a910703-8747-4f36-b737-1542551ae10d,08e58f6a-9127-4271-a62d-b47bed427d4c",
+  LIST_ID:     "3a644fea-8093-4bb4-8245-a8753f423433",
+  DRIVE_ID:    "b!AweRSkeHNk-3NxVCVRrhDWqP5QgnkXFCpi20e-1CfUyVj7PYHaOQTo1KbSJu7Fd1",
+
+  // Optional: base folder in document library (leave as "" for root)
+  LIBRARY_ROOT_FOLDER: "GC_Training_Portal_Test/Training Materials Library",
+};
+</script>
+
+<!-- ════════════════════════════════════════════════════════
+     ②  MSAL INITIALISATION & AUTH LOGIC
+     ════════════════════════════════════════════════════════ -->
+<script>
+// ── MSAL config ──────────────────────────────────────────
+let msalInstance, currentAccount, accessToken;
+
+function initMSAL() {
+  msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId:   CONFIG.CLIENT_ID,
+      authority:  `https://login.microsoftonline.com/${CONFIG.TENANT_ID}`,
+      redirectUri: window.location.origin + window.location.pathname,
+    },
+    cache: { cacheLocation: "sessionStorage" },
+  });
+}
+
+async function signIn() {
+  try {
+    const result = await msalInstance.loginPopup({
+      scopes: ["User.Read", "Sites.ReadWrite.All"],
+    });
+    currentAccount = result.account;
+    await afterSignIn();
+  } catch (e) {
+    console.error("Sign-in failed:", e);
+    showToast("Sign-in failed — please try again");
+  }
+}
+
+async function getToken() {
+  try {
+    const result = await msalInstance.acquireTokenSilent({
+      scopes: ["Sites.ReadWrite.All"],
+      account: currentAccount,
+    });
+    return result.accessToken;
+  } catch {
+    const result = await msalInstance.acquireTokenPopup({
+      scopes: ["Sites.ReadWrite.All"],
+      account: currentAccount,
+    });
+    return result.accessToken;
+  }
+}
+
+async function afterSignIn() {
+  // Fetch user profile from Graph
+  accessToken = await getToken();
+  const me = await graphGet("/me");
+  const dept = me.department || me.jobTitle || "GC UK";
+  const name = me.displayName || currentAccount.name;
+  const initials = name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+
+  // Update header
+  document.getElementById("user-name-header").textContent = name;
+  document.getElementById("user-initials").textContent = initials;
+  document.getElementById("auth-gate").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("header-user").style.display = "flex";
+  document.getElementById("sign-in-header").style.display = "none";
+
+  // Pre-fill auto fields
+  document.getElementById("f-submitter").textContent = name;
+  document.getElementById("f-team").textContent = dept;
+  document.getElementById("f-date").value = new Date().toISOString().split("T")[0];
+
+  // Store for submission
+  window._userName = name;
+  window._userDept = dept;
+  window._userEmail = me.mail || me.userPrincipalName;
+}
+
+// ── Graph API helpers ─────────────────────────────────────
+async function graphGet(path) {
+  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!res.ok) throw new Error(`Graph GET ${path} failed: ${res.status}`);
+  return res.json();
+}
+
+async function graphPost(path, body) {
+  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Graph POST ${path} failed: ${res.status} — ${err}`);
+  }
+  return res.json();
+}
+
+// ── File upload (small ≤ 4MB direct PUT, large = chunked session) ─────────
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB
+
+async function uploadFile(file, progressCallback) {
+  const folder = CONFIG.LIBRARY_ROOT_FOLDER
+    ? `${CONFIG.LIBRARY_ROOT_FOLDER}/${selectedCategory()}`
+    : selectedCategory();
+  const encodedPath = encodeURIComponent(`${folder}/${file.name}`).replace(/%2F/g, "/");
+  const uploadPath = `/sites/${CONFIG.SITE_ID}/drives/${CONFIG.DRIVE_ID}/root:/${encodedPath}`;
+
+  if (file.size <= 4 * 1024 * 1024) {
+    // Small file — direct PUT
+    progressCallback(30);
+    const res = await fetch(`https://graph.microsoft.com/v1.0${uploadPath}:/content`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    progressCallback(90);
+    if (!res.ok) throw new Error(`File upload failed: ${res.status}`);
+    const item = await res.json();
+    progressCallback(100);
+    return item.webUrl;
+  } else {
+    // Large file — upload session
+    const session = await graphPost(`${uploadPath}:/createUploadSession`, {
+      item: { "@microsoft.graph.conflictBehavior": "rename", name: file.name }
+    });
+    const uploadUrl = session.uploadUrl;
+    let start = 0;
+    let webUrl = "";
+    while (start < file.size) {
+      const end = Math.min(start + CHUNK_SIZE - 1, file.size - 1);
+      const chunk = file.slice(start, end + 1);
+      progressCallback(Math.round((start / file.size) * 85));
+      const res = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Range": `bytes ${start}-${end}/${file.size}`,
+          "Content-Length": chunk.size,
+        },
+        body: chunk,
+      });
+      if (res.status === 200 || res.status === 201) {
+        const item = await res.json();
+        webUrl = item.webUrl;
+      }
+      start = end + 1;
+    }
+    progressCallback(100);
+    return webUrl;
+  }
+}
+
+// ── Write metadata to SharePoint List ────────────────────
+async function writeListItem(fields) {
+  return graphPost(
+    `/sites/${CONFIG.SITE_ID}/lists/${CONFIG.LIST_ID}/items`,
+    { fields }
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function selectedCategory() {
+  return document.getElementById("f-category").value || "General";
+}
+
+function generateRef() {
+  return `LH-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+}
+
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), duration);
+}
+</script>
+
+<!-- ════════════════════════════════════════════════════════
+     ③  HTML STRUCTURE
+     ════════════════════════════════════════════════════════ -->
+
+<header>
+  <div class="logo">Learn<span>Hub</span></div>
+  <div class="header-right">
+    <button class="sign-in-btn" id="sign-in-header" onclick="signIn()">
+      Sign in with Microsoft
+    </button>
+    <div class="user-pill" id="header-user" style="display:none">
+      <div class="avatar" id="user-initials">?</div>
+      <span id="user-name-header">Loading…</span>
+    </div>
+  </div>
+</header>
+
+<!-- Auth gate -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-icon">🔐</div>
+    <div class="auth-title">Sign in to submit materials</div>
+    <div class="auth-sub">Use your Grid Consulting Microsoft 365 account. Your name and team are pulled in automatically.</div>
+    <button class="auth-btn" onclick="signIn()">
+      <svg width="18" height="18" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Sign in with Microsoft
+    </button>
+  </div>
+</div>
+
+<!-- Main app (shown after auth) -->
+<div id="app">
+  <div class="page">
+    <div class="page-title">Submit Training Material</div>
+    <div class="page-subtitle">Share resources with the organisation — reviewed by L&amp;D before publishing to the repository.</div>
+
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step active" id="sb1" onclick="goTo(1)">
+        <div class="step-num" id="sn1">1</div>
+        <div class="step-label">Basic Info</div>
+      </div>
+      <div class="step-div"></div>
+      <div class="step" id="sb2" onclick="goTo(2)">
+        <div class="step-num" id="sn2">2</div>
+        <div class="step-label">Classification</div>
+      </div>
+      <div class="step-div"></div>
+      <div class="step" id="sb3" onclick="goTo(3)">
+        <div class="step-num" id="sn3">3</div>
+        <div class="step-label">Upload</div>
+      </div>
+      <div class="step-div"></div>
+      <div class="step" id="sb4" onclick="goTo(4)">
+        <div class="step-num" id="sn4">4</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-fill" id="prog" style="width:25%"></div>
+    </div>
+
+    <!-- ── STEP 1: Basic Info ── -->
+    <div class="panel active" id="p1">
+      <div class="card">
+        <div class="card-title">Basic Information</div>
+        <div class="card-desc">Fields marked <span style="color:var(--accent)">*</span> are required.</div>
+        <div class="form-grid">
+          <div class="field span2">
+            <label>Title <span class="req">*</span></label>
+            <input type="text" id="f-title" placeholder="e.g. Introduction to Harmonic Stability Analysis">
+          </div>
+          <div class="field span2">
+            <label>Description <span class="req">*</span></label>
+            <textarea id="f-desc" placeholder="Briefly describe what this material covers and who it's for…" maxlength="500"></textarea>
+            <div class="hint">Max 500 characters</div>
+          </div>
+          <div class="field">
+            <label>Submitted By</label>
+            <div class="auto-field"><span id="f-submitter" style="flex:1">Loading…</span><span class="auto-badge">AUTO</span></div>
+          </div>
+          <div class="field">
+            <label>Team</label>
+            <div class="auto-field"><span id="f-team" style="flex:1">Loading…</span><span class="auto-badge">AUTO</span></div>
+          </div>
+          <div class="field">
+            <label>Date Created <span class="req">*</span></label>
+            <input type="date" id="f-date">
+          </div>
+          <div class="field">
+            <label>Version</label>
+            <input type="text" id="f-version" placeholder="e.g. 1.0">
+          </div>
+        </div>
+      </div>
+      <div class="form-nav">
+        <button class="btn-draft" onclick="saveDraft()">💾 Save draft</button>
+        <button class="btn btn-primary" onclick="goTo(2)">Next: Classification →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Classification ── -->
+    <div class="panel" id="p2">
+      <div class="card">
+        <div class="card-title">Classification</div>
+        <div class="card-desc">Standardised fields keep the repository consistent and searchable.</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Content Type <span class="req">*</span></label>
+            <select id="f-type">
+              <option value="">Select type…</option>
+              <option>E-learning Module</option>
+              <option>Video</option>
+              <option>Document / Guide</option>
+              <option>Presentation</option>
+              <option>Job Aid / Quick Reference</option>
+              <option>Webinar Recording</option>
+              <option>External Course Link</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Topic Category <span class="req">*</span></label>
+            <select id="f-category" onchange="updateReviewCategory()">
+              <option value="">Select category…</option>
+              <option>Compliance &amp; Legal</option>
+              <option>Leadership &amp; Management</option>
+              <option>Technical Skills</option>
+              <option>Soft Skills</option>
+              <option>Health &amp; Safety</option>
+              <option>Onboarding</option>
+              <option>Data &amp; Analytics</option>
+              <option>Diversity &amp; Inclusion</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Language <span class="req">*</span></label>
+            <select id="f-lang">
+              <option value="English">English</option>
+              <option>French</option>
+              <option>German</option>
+              <option>Spanish</option>
+              <option>Mandarin</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Difficulty Level</label>
+            <select id="f-level">
+              <option value="">Select level…</option>
+              <option>Introductory</option>
+              <option>Intermediate</option>
+              <option>Advanced</option>
+              <option>All Levels</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Review / Expiry Date</label>
+            <input type="date" id="f-expiry">
+            <div class="hint">When should this be reviewed for accuracy?</div>
+          </div>
+          <div class="field">
+            <label>Estimated Duration</label>
+            <input type="text" id="f-duration" placeholder="e.g. 30 mins, 2 hours">
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field" style="margin-bottom:18px">
+          <label>Target Audience <span class="req">*</span></label>
+          <div class="hint" style="margin-bottom:8px">Select all that apply</div>
+          <div class="check-grid" id="audience-grid">
+            <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div> All Staff</div>
+            <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div> Managers &amp; Leaders</div>
+            <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div> New Joiners</div>
+            <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div> Individual Contributors</div>
+            <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div> HR &amp; People Teams</div>
+            <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div> Technical / Engineering</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Keywords / Tags</label>
+          <div class="hint" style="margin-bottom:6px">Type a keyword and press Enter</div>
+          <div class="tag-wrap" id="tag-wrap" onclick="document.getElementById('tag-in').focus()">
+            <input class="tag-input" id="tag-in" placeholder="Add tag…" onkeydown="handleTag(event)">
+          </div>
+        </div>
+      </div>
+      <div class="form-nav">
+        <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
+        <div style="display:flex;align-items:center;gap:16px">
+          <button class="btn-draft" onclick="saveDraft()">💾 Save draft</button>
+          <button class="btn btn-primary" onclick="goTo(3)">Next: Upload →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: Upload ── -->
+    <div class="panel" id="p3">
+      <div class="card">
+        <div class="card-title">Upload Material</div>
+        <div class="card-desc">Upload a file or link to an externally hosted resource.</div>
+
+        <div class="toggle-row">
+          <button class="tog on" id="tog-file" onclick="switchUpload('file')">📁 File Upload</button>
+          <button class="tog" id="tog-url" onclick="switchUpload('url')">🔗 External URL</button>
+        </div>
+
+        <div id="sec-file">
+          <div class="drop-zone" id="dropzone"
+            ondragover="e=>{ e.preventDefault(); document.getElementById('dropzone').classList.add('over'); }"
+            ondragleave="()=>document.getElementById('dropzone').classList.remove('over')"
+            ondrop="handleDrop(event)">
+            <input type="file" id="file-in" onchange="handleFile(event)"
+              accept=".pdf,.pptx,.docx,.xlsx,.mp4,.zip,.scorm">
+            <div class="drop-icon">📤</div>
+            <div class="drop-title">Drag & drop your file here</div>
+            <div class="drop-sub">or click to browse</div>
+            <div class="format-pills">
+              <span class="fmt">PDF</span><span class="fmt">PPTX</span>
+              <span class="fmt">DOCX</span><span class="fmt">MP4</span>
+              <span class="fmt">SCORM</span><span class="fmt">ZIP</span>
+            </div>
+            <div style="font-size:11px;color:var(--ink-muted);margin-top:8px">Max size: 500 MB</div>
+          </div>
+          <div id="file-list"></div>
+          <div class="upload-prog-wrap" id="prog-wrap">
+            <div class="upload-prog-fill" id="prog-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div id="sec-url" style="display:none">
+          <div class="callout info">ℹ️ For external resources (LinkedIn Learning, YouTube etc.) paste the URL below and complete the licence fields.</div>
+          <div class="form-grid">
+            <div class="field span2">
+              <label>Resource URL <span class="req">*</span></label>
+              <input type="url" id="f-url" placeholder="https://…">
+            </div>
+            <div class="field">
+              <label>Source / Publisher</label>
+              <input type="text" id="f-publisher" placeholder="e.g. LinkedIn Learning">
+            </div>
+            <div class="field">
+              <label>Licence Type</label>
+              <select id="f-licence">
+                <option value="">Select…</option>
+                <option>Free / Open Access</option>
+                <option>Creative Commons</option>
+                <option>Company Licence</option>
+                <option>Paid — Individual</option>
+                <option>Proprietary</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Visibility <span class="req">*</span></label>
+            <select id="f-visibility">
+              <option>All Staff</option>
+              <option>Department Only</option>
+              <option>Management Only</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Sensitivity Level</label>
+            <select id="f-sensitivity">
+              <option>Standard — Internal</option>
+              <option>Confidential</option>
+              <option>Restricted</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:16px">
+          <label>Notes for Reviewer</label>
+          <textarea id="f-notes" placeholder="Any context you'd like to share with the L&D team…" style="min-height:60px"></textarea>
+        </div>
+      </div>
+      <div class="form-nav">
+        <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+        <div style="display:flex;align-items:center;gap:16px">
+          <button class="btn-draft" onclick="saveDraft()">💾 Save draft</button>
+          <button class="btn btn-primary" onclick="goTo(4)">Next: Review →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 4: Review ── -->
+    <div class="panel" id="p4">
+      <div class="card">
+        <div class="card-title">Review & Submit</div>
+        <div class="card-desc">Check everything looks correct. Your material will be reviewed by the L&amp;D team before it goes live.</div>
+
+        <div class="review-section">
+          <div class="review-lbl">Basic Information</div>
+          <div class="review-row"><span class="rk">Title</span><span class="rv" id="rv-title">—</span></div>
+          <div class="review-row"><span class="rk">Submitted By</span><span class="rv" id="rv-submitter">—</span></div>
+          <div class="review-row"><span class="rk">Team</span><span class="rv" id="rv-team">—</span></div>
+          <div class="review-row"><span class="rk">Date Created</span><span class="rv" id="rv-date">—</span></div>
+          <div class="review-row"><span class="rk">Version</span><span class="rv" id="rv-version">—</span></div>
+        </div>
+
+        <div class="review-section">
+          <div class="review-lbl">Classification</div>
+          <div class="review-row"><span class="rk">Content Type</span><span class="rv" id="rv-type">—</span></div>
+          <div class="review-row"><span class="rk">Category</span><span class="rv" id="rv-category">—</span></div>
+          <div class="review-row"><span class="rk">Audience</span><span class="rv" id="rv-audience">—</span></div>
+          <div class="review-row"><span class="rk">Difficulty</span><span class="rv" id="rv-level">—</span></div>
+          <div class="review-row"><span class="rk">Language</span><span class="rv" id="rv-lang">—</span></div>
+          <div class="review-row"><span class="rk">Review Date</span><span class="rv" id="rv-expiry">—</span></div>
+          <div class="review-row"><span class="rk">Tags</span><span class="rv" id="rv-tags">—</span></div>
+        </div>
+
+        <div class="review-section">
+          <div class="review-lbl">File / Access</div>
+          <div class="review-row"><span class="rk">File / URL</span><span class="rv" id="rv-file">—</span></div>
+          <div class="review-row"><span class="rk">Visibility</span><span class="rv" id="rv-visibility">—</span></div>
+          <div class="review-row"><span class="rk">Sensitivity</span><span class="rv" id="rv-sensitivity">—</span></div>
+        </div>
+
+        <div class="callout ok" id="submit-info">
+          ✅ On submission, the file uploads to SharePoint Document Library and metadata is written to the SharePoint List. The L&amp;D team will review within 2–3 working days.
+        </div>
+
+        <div class="callout warn" id="submit-error" style="display:none"></div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-ghost" onclick="goTo(3)" id="back-btn">← Edit Submission</button>
+        <button class="btn btn-primary" id="submit-btn" onclick="submitForm()" style="padding:10px 32px;font-size:15px">
+          Submit for Review ✓
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 5: Success ── -->
+    <div class="panel" id="p5">
+      <div class="card">
+        <div class="success">
+          <div class="success-icon">✅</div>
+          <div class="success-title">Submission Received!</div>
+          <div class="success-sub">Your material has been saved to SharePoint and is awaiting L&amp;D review. You'll receive an email confirmation shortly.</div>
+          <div class="ref-box" id="ref-box">LH-2026-—</div>
+          <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="resetForm()">Submit Another</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page -->
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     ④  FORM LOGIC
+     ════════════════════════════════════════════════════════ -->
+<script>
+// ── State ─────────────────────────────────────────────────
+let selectedFile = null;
+let uploadMode = "file"; // "file" | "url"
+
+// ── Stepper / navigation ──────────────────────────────────
+function goTo(n) {
+  if (n === 4) populateReview();
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("p" + n).classList.add("active");
+
+  for (let i = 1; i <= 4; i++) {
+    const sb = document.getElementById("sb" + i);
+    const sn = document.getElementById("sn" + i);
+    sb.className = "step";
+    if (i < n) { sb.classList.add("done"); sn.textContent = "✓"; }
+    else if (i === n) { sb.classList.add("active"); sn.textContent = i; }
+    else { sn.textContent = i; }
+  }
+
+  const pct = { 1:"25%", 2:"50%", 3:"75%", 4:"100%" };
+  document.getElementById("prog").style.width = pct[n] || "100%";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ── Review population ─────────────────────────────────────
+function rv(id, val) { document.getElementById(id).textContent = val || "—"; }
+
+function populateReview() {
+  rv("rv-title",       document.getElementById("f-title").value);
+  rv("rv-submitter",   window._userName);
+  rv("rv-team",        window._userDept);
+  rv("rv-date",        document.getElementById("f-date").value);
+  rv("rv-version",     document.getElementById("f-version").value);
+  rv("rv-type",        document.getElementById("f-type").value);
+  rv("rv-category",    document.getElementById("f-category").value);
+  rv("rv-level",       document.getElementById("f-level").value);
+  rv("rv-lang",        document.getElementById("f-lang").value);
+  rv("rv-expiry",      document.getElementById("f-expiry").value);
+  rv("rv-visibility",  document.getElementById("f-visibility").value);
+  rv("rv-sensitivity", document.getElementById("f-sensitivity").value);
+
+  // Audience
+  const checked = [...document.querySelectorAll("#audience-grid .check-item.on")]
+    .map(el => el.textContent.trim());
+  rv("rv-audience", checked.length ? checked.join(", ") : "—");
+
+  // Tags
+  const tags = [...document.querySelectorAll("#tag-wrap .tag")]
+    .map(t => t.textContent.trim().replace("×", "").trim());
+  rv("rv-tags", tags.length ? tags.join(", ") : "—");
+
+  // File
+  if (uploadMode === "file") {
+    rv("rv-file", selectedFile ? selectedFile.name : "No file selected");
+  } else {
+    rv("rv-file", document.getElementById("f-url").value || "No URL entered");
+  }
+}
+
+function updateReviewCategory() {
+  const v = document.getElementById("f-category").value;
+  const el = document.getElementById("rv-category");
+  if (el) el.textContent = v || "—";
+}
+
+// ── Tags ──────────────────────────────────────────────────
+function handleTag(e) {
+  if (e.key !== "Enter" && e.key !== ",") return;
+  e.preventDefault();
+  const val = e.target.value.trim().replace(/,$/, "");
+  if (!val) return;
+  const wrap = document.getElementById("tag-wrap");
+  const tag = document.createElement("div");
+  tag.className = "tag";
+  tag.innerHTML = `${val} <button class="tag-x" onclick="this.parentElement.remove()">×</button>`;
+  wrap.insertBefore(tag, e.target);
+  e.target.value = "";
+}
+
+// ── Checkboxes ────────────────────────────────────────────
+function toggleCheck(el) {
+  el.classList.toggle("on");
+  const box = el.querySelector(".check-box");
+  box.textContent = el.classList.contains("on") ? "✓" : "";
+}
+
+// ── Upload toggle ─────────────────────────────────────────
+function switchUpload(mode) {
+  uploadMode = mode;
+  document.getElementById("sec-file").style.display = mode === "file" ? "block" : "none";
+  document.getElementById("sec-url").style.display  = mode === "url"  ? "block" : "none";
+  document.getElementById("tog-file").className = "tog" + (mode === "file" ? " on" : "");
+  document.getElementById("tog-url").className  = "tog" + (mode === "url"  ? " on" : "");
+}
+
+// ── File handling ─────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById("dropzone").classList.remove("over");
+  if (e.dataTransfer.files.length) renderFile(e.dataTransfer.files[0]);
+}
+function handleFile(e) { if (e.target.files.length) renderFile(e.target.files[0]); }
+
+function renderFile(file) {
+  selectedFile = file;
+  const icons = { pdf:"📄", pptx:"📊", docx:"📝", xlsx:"📋", mp4:"🎬", zip:"🗜️" };
+  const ext = file.name.split(".").pop().toLowerCase();
+  const size = file.size > 1048576
+    ? (file.size/1048576).toFixed(1)+" MB"
+    : (file.size/1024).toFixed(0)+" KB";
+  document.getElementById("file-list").innerHTML = `
+    <div class="file-item">
+      <span>${icons[ext] || "📎"}</span>
+      <span class="file-name">${file.name}</span>
+      <span class="file-size">${size}</span>
+      <button class="file-rm" onclick="clearFile()">✕</button>
+    </div>`;
+}
+function clearFile() {
+  selectedFile = null;
+  document.getElementById("file-list").innerHTML = "";
+  document.getElementById("file-in").value = "";
+}
+
+// ── Draft save ────────────────────────────────────────────
+function saveDraft() {
+  const draft = {
+    title: document.getElementById("f-title").value,
+    desc:  document.getElementById("f-desc").value,
+    type:  document.getElementById("f-type").value,
+    category: document.getElementById("f-category").value,
+  };
+  localStorage.setItem("learnhub_draft", JSON.stringify(draft));
+  showToast("✓ Draft saved to browser");
+}
+
+// ── MAIN SUBMIT ───────────────────────────────────────────
+async function submitForm() {
+  const btn = document.getElementById("submit-btn");
+  const backBtn = document.getElementById("back-btn");
+  const errBox = document.getElementById("submit-error");
+  errBox.style.display = "none";
+
+  // Basic validation
+  if (!document.getElementById("f-title").value.trim()) {
+    showToast("Please enter a title before submitting"); goTo(1); return;
+  }
+  if (!document.getElementById("f-category").value) {
+    showToast("Please select a category before submitting"); goTo(2); return;
+  }
+
+  btn.disabled = true;
+  backBtn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span>&nbsp; Uploading…`;
+
+  try {
+    accessToken = await getToken();
+
+    // Step A: upload file (if file mode)
+    let fileUrl = "";
+    let fileName = "";
+    if (uploadMode === "file" && selectedFile) {
+      document.getElementById("prog-wrap").style.display = "block";
+      fileUrl = await uploadFile(selectedFile, pct => {
+        document.getElementById("prog-fill").style.width = pct + "%";
+        btn.innerHTML = `<span class="spinner"></span>&nbsp; Uploading… ${pct}%`;
+      });
+      fileName = selectedFile.name;
+    } else if (uploadMode === "url") {
+      fileUrl = document.getElementById("f-url").value;
+    }
+
+    btn.innerHTML = `<span class="spinner"></span>&nbsp; Saving metadata…`;
+
+    // Collect audience
+    const audience = [...document.querySelectorAll("#audience-grid .check-item.on")]
+      .map(el => el.textContent.trim()).join("; ");
+
+    // Collect tags
+    const tags = [...document.querySelectorAll("#tag-wrap .tag")]
+      .map(t => t.textContent.trim().replace("×","").trim()).join(", ");
+
+    // Step B: write to SharePoint List
+    const ref = generateRef();
+    await writeListItem({
+      Title:           document.getElementById("f-title").value.trim(),
+      Description:     document.getElementById("f-desc").value.trim(),
+      SubmittedBy:     window._userName,
+      SubmitterEmail:  window._userEmail,
+      Team:            window._userDept,
+      DateCreated:     document.getElementById("f-date").value,
+      Version:         document.getElementById("f-version").value,
+      MaterialType:    document.getElementById("f-type").value,
+      Category:        document.getElementById("f-category").value,
+      TargetAudience:  audience,
+      DifficultyLevel: document.getElementById("f-level").value,
+      Language:        document.getElementById("f-lang").value,
+      ReviewDate:      document.getElementById("f-expiry").value || null,
+      Duration:        document.getElementById("f-duration").value,
+      Tags:            tags,
+      // Hyperlink-type columns require this {Description, Url} shape via Graph API
+      FileUrl:         fileUrl ? { Description: fileName || fileUrl, Url: fileUrl } : null,
+      FileName:        fileName,
+      LicenceType:     document.getElementById("f-licence")?.value || "",
+      Publisher:       document.getElementById("f-publisher")?.value || "",
+      Visibility:      document.getElementById("f-visibility").value,
+      SensitivityLevel:document.getElementById("f-sensitivity").value,
+      ReviewerNotes:   document.getElementById("f-notes").value,
+      Status:          "Pending Review",
+      ReferenceNumber: ref,
+    });
+
+    // Success
+    document.getElementById("ref-box").textContent = ref;
+    document.querySelector(".stepper").style.display = "none";
+    document.querySelector(".progress-wrap").style.display = "none";
+    goTo(5);
+
+  } catch (err) {
+    console.error("Submission error:", err);
+    errBox.textContent = `⚠️ Submission failed: ${err.message}. Please try again or contact IT support.`;
+    errBox.style.display = "flex";
+    btn.disabled = false;
+    backBtn.disabled = false;
+    btn.innerHTML = "Submit for Review ✓";
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────
+function resetForm() {
+  document.querySelector(".stepper").style.display = "flex";
+  document.querySelector(".progress-wrap").style.display = "block";
+  ["f-title","f-desc","f-version","f-expiry","f-duration","f-notes","f-url","f-publisher"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
+  ["f-type","f-category","f-level","f-licence"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+  });
+  document.querySelectorAll(".check-item.on").forEach(el => toggleCheck(el));
+  document.querySelectorAll("#tag-wrap .tag").forEach(t => t.remove());
+  clearFile();
+  document.getElementById("prog-wrap").style.display = "none";
+  document.getElementById("prog-fill").style.width = "0%";
+  document.getElementById("submit-error").style.display = "none";
+  document.getElementById("submit-btn").disabled = false;
+  document.getElementById("submit-btn").innerHTML = "Submit for Review ✓";
+  switchUpload("file");
+  goTo(1);
+}
+
+// ── Bootstrap ─────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  // Warn if config not filled in
+  if (CONFIG.CLIENT_ID === "YOUR_CLIENT_ID_HERE") {
+    document.getElementById("auth-gate").innerHTML = `
+      <div class="auth-card">
+        <div class="auth-icon">⚙️</div>
+        <div class="auth-title">Configuration required</div>
+        <div class="auth-sub">
+          Open this HTML file and fill in the four <code>CONFIG</code> values at the top
+          (CLIENT_ID, TENANT_ID, SITE_ID, LIST_ID, DRIVE_ID) before deploying.
+          See the setup guide for how to obtain each value.
+        </div>
+      </div>`;
+    return;
+  }
+  initMSAL();
+  // Handle redirect after login
+  msalInstance.handleRedirectPromise().then(result => {
+    if (result) { currentAccount = result.account; afterSignIn(); }
+  });
+});
+</script>
+
+</body>
+</html>
