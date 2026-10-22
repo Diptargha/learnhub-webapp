@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -390,6 +390,19 @@ const CONFIG = {
 <script>
 // ── MSAL config ──────────────────────────────────────────
 let msalInstance, currentAccount, accessToken;
+let draftMemory = null;
+
+function browserStorageAvailable() {
+  try {
+    const storage = window.sessionStorage;
+    const key = "learnhub_storage_test";
+    storage.setItem(key, "1");
+    storage.removeItem(key);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
 
 function initMSAL() {
   msalInstance = new msal.PublicClientApplication({
@@ -416,15 +429,16 @@ async function signIn() {
 }
 
 async function getToken() {
+  const scopes = ["User.Read", "Sites.ReadWrite.All"];
   try {
     const result = await msalInstance.acquireTokenSilent({
-      scopes: ["Sites.ReadWrite.All"],
+      scopes,
       account: currentAccount,
     });
     return result.accessToken;
   } catch {
     const result = await msalInstance.acquireTokenPopup({
-      scopes: ["Sites.ReadWrite.All"],
+      scopes,
       account: currentAccount,
     });
     return result.accessToken;
@@ -1060,8 +1074,13 @@ function saveDraft() {
     type:  document.getElementById("f-type").value,
     category: document.getElementById("f-category").value,
   };
-  localStorage.setItem("learnhub_draft", JSON.stringify(draft));
-  showToast("✓ Draft saved to browser");
+  if (browserStorageAvailable()) {
+    sessionStorage.setItem("learnhub_draft", JSON.stringify(draft));
+    showToast("✓ Draft saved to browser");
+  } else {
+    draftMemory = draft;
+    showToast("✓ Draft saved for this preview session");
+  }
 }
 
 // ── MAIN SUBMIT ───────────────────────────────────────────
@@ -1180,7 +1199,6 @@ function resetForm() {
 
 // ── Bootstrap ─────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  // Warn if config not filled in
   if (CONFIG.CLIENT_ID === "YOUR_CLIENT_ID_HERE") {
     document.getElementById("auth-gate").innerHTML = `
       <div class="auth-card">
@@ -1194,11 +1212,21 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>`;
     return;
   }
+  if (!window.msal) {
+    console.error("MSAL failed to load");
+    showToast("Microsoft sign-in library failed to load");
+    return;
+  }
   initMSAL();
-  // Handle redirect after login
-  msalInstance.handleRedirectPromise().then(result => {
-    if (result) { currentAccount = result.account; afterSignIn(); }
-  });
+  // MSAL 2.38 requires initialize() before login or token calls.
+  msalInstance.initialize()
+    .then(() => msalInstance.handleRedirectPromise())
+    .then(result => {
+      if (result) { currentAccount = result.account; afterSignIn(); }
+    })
+    .catch(e => {
+      console.error("Microsoft sign-in could not start:", e);
+    });
 });
 </script>
 
